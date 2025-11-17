@@ -1,6 +1,6 @@
-import { Input, Textarea } from '@heroui/input';
 import { UseFormRegister, FieldErrors } from 'react-hook-form';
 
+import { DynamicForm, type FieldConfig } from '@/components/form/dynamic-form';
 import type { FormData } from '@/lib/schemas';
 
 interface BasicInfoSectionProps {
@@ -9,38 +9,42 @@ interface BasicInfoSectionProps {
 }
 
 export function BasicInfoSection({ register, errors }: BasicInfoSectionProps) {
+  const fields: FieldConfig[] = [
+    {
+      type: 'input',
+      name: '_id',
+      label: 'ID',
+      placeholder: 'Enter ID',
+      width: 'full',
+    },
+    {
+      type: 'input',
+      name: 'slug',
+      label: 'Slug',
+      placeholder: 'Enter slug',
+      width: 'full',
+    },
+    {
+      type: 'input',
+      name: 'title',
+      label: 'Title',
+      placeholder: 'Enter title',
+      width: 'full',
+    },
+    {
+      type: 'textarea',
+      name: 'description',
+      label: 'Description',
+      placeholder: 'Enter description',
+      minRows: 3,
+      width: 'full',
+    },
+  ];
+
   return (
     <div className='w-full flex flex-col gap-4 rounded-lg border p-4'>
       <h2 className='text-xl font-semibold'>Basic Information</h2>
-      <Input
-        label='ID'
-        placeholder='Enter ID'
-        {...register('_id')}
-        errorMessage={errors._id?.message}
-        isInvalid={!!errors._id}
-      />
-      <Input
-        label='Slug'
-        placeholder='Enter slug'
-        {...register('slug')}
-        errorMessage={errors.slug?.message}
-        isInvalid={!!errors.slug}
-      />
-      <Input
-        label='Title'
-        placeholder='Enter title'
-        {...register('title')}
-        errorMessage={errors.title?.message}
-        isInvalid={!!errors.title}
-      />
-      <Textarea
-        label='Description'
-        placeholder='Enter description'
-        minRows={3}
-        {...register('description')}
-        errorMessage={errors.description?.message}
-        isInvalid={!!errors.description}
-      />
+      <DynamicForm fields={fields} register={register} errors={errors} />
     </div>
   );
 }

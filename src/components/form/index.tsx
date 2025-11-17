@@ -58,7 +58,7 @@ export function TemplateForm() {
         removeShot={removeShot}
     />
 
-    <ConfigurableOptionsSection watch={watch} setValue={setValue} />
+    <ConfigurableOptionsSection watch={watch} setValue={setValue} register={register} errors={errors} />
 
     <Button type='submit' color='primary' size='lg' className='w-full'>
         Submit

@@ -1,8 +1,7 @@
 import { Button } from '@heroui/button';
-import { Dropdown, DropdownItem, DropdownMenu, DropdownTrigger } from '@heroui/dropdown';
-import { Input, Textarea } from '@heroui/input';
-import { UseFormRegister, FieldErrors, UseFieldArrayReturn, UseFormWatch, UseFormSetValue } from 'react-hook-form';
+import { UseFormRegister, FieldErrors, UseFieldArrayReturn, UseFormWatch, UseFormSetValue, Path } from 'react-hook-form';
 
+import { DynamicForm, type FieldConfig } from '@/components/form/dynamic-form';
 import { SHOT_TYPES } from '@/lib/constants/form';
 import type { FormData } from '@/lib/schemas';
 
@@ -25,6 +24,70 @@ export function ShotsSection({
   appendShot,
   removeShot,
 }: ShotsSectionProps) {
+  const getShotFields = (index: number): FieldConfig[] => [
+    {
+      type: 'input',
+      name: `shots.${index}.id` as Path<FormData>,
+      label: 'ID',
+      placeholder: 'Enter shot ID',
+      width: 'half',
+    },
+    {
+      type: 'input',
+      name: `shots.${index}.order` as Path<FormData>,
+      label: 'Order',
+      placeholder: 'Enter order',
+      inputType: 'number',
+      valueAsNumber: true,
+      width: 'half',
+    },
+    {
+      type: 'dropdown',
+      name: `shots.${index}.type` as Path<FormData>,
+      label: 'Type',
+      placeholder: 'Select type',
+      options: [...SHOT_TYPES],
+      watch,
+      setValue,
+      optionLabels: {
+        SHOT_WITH_CAST: 'Shot with Cast',
+        SHOT_WITHOUT_CAST: 'Shot without Cast',
+      },
+      width: 'full',
+    },
+    {
+      type: 'input',
+      name: `shots.${index}.title` as Path<FormData>,
+      label: 'Title',
+      placeholder: 'Enter shot title',
+      width: 'full',
+    },
+    {
+      type: 'textarea',
+      name: `shots.${index}.storyline` as Path<FormData>,
+      label: 'Storyline',
+      placeholder: 'Enter storyline',
+      minRows: 2,
+      width: 'full',
+    },
+    {
+      type: 'textarea',
+      name: `shots.${index}.textToImage.promptParams.prompt` as Path<FormData>,
+      label: 'Text to Image Prompt',
+      placeholder: 'Enter prompt',
+      minRows: 3,
+      width: 'half',
+    },
+    {
+      type: 'textarea',
+      name: `shots.${index}.imageToVideo.promptParams.prompt` as Path<FormData>,
+      label: 'Image to Video Prompt',
+      placeholder: 'Enter prompt',
+      minRows: 3,
+      width: 'half',
+    },
+  ];
+
   return (
     <div className='w-full flex flex-col gap-4 rounded-lg border p-4'>
       <div className='flex items-center justify-between'>
@@ -70,90 +133,7 @@ export function ShotsSection({
               Delete
             </Button>
           </div>
-          <div className='grid grid-cols-2 gap-3'>
-            <Input
-              label='ID'
-              placeholder='Enter shot ID'
-              {...register(`shots.${index}.id`)}
-              errorMessage={errors.shots?.[index]?.id?.message}
-              isInvalid={!!errors.shots?.[index]?.id}
-            />
-            <Input
-              label='Order'
-              type='number'
-              placeholder='Enter order'
-              {...register(`shots.${index}.order`, { valueAsNumber: true })}
-              errorMessage={errors.shots?.[index]?.order?.message}
-              isInvalid={!!errors.shots?.[index]?.order}
-            />
-          </div>
-          <Dropdown>
-            <DropdownTrigger>
-              <Button variant='bordered' className='w-full justify-between'>
-                {watch(`shots.${index}.type`) === 'SHOT_WITH_CAST'
-                  ? 'Shot with Cast'
-                  : watch(`shots.${index}.type`) === 'SHOT_WITHOUT_CAST'
-                    ? 'Shot without Cast'
-                    : 'Select type'}
-              </Button>
-            </DropdownTrigger>
-            <DropdownMenu
-              aria-label='Shot Type Options'
-              selectedKeys={
-                watch(`shots.${index}.type`)
-                  ? new Set([watch(`shots.${index}.type`)])
-                  : new Set()
-              }
-              selectionMode='single'
-              onSelectionChange={(keys) => {
-                const selected = Array.from(keys)[0] as string;
-                if (selected) {
-                  setValue(`shots.${index}.type`, selected as 'SHOT_WITH_CAST' | 'SHOT_WITHOUT_CAST', {
-                    shouldValidate: true,
-                  });
-                }
-              }}
-            >
-              {SHOT_TYPES.map((type) => (
-                <DropdownItem key={type}>
-                  {type === 'SHOT_WITH_CAST' ? 'Shot with Cast' : 'Shot without Cast'}
-                </DropdownItem>
-              ))}
-            </DropdownMenu>
-          </Dropdown>
-          <Input
-            label='Title'
-            placeholder='Enter shot title'
-            {...register(`shots.${index}.title`)}
-            errorMessage={errors.shots?.[index]?.title?.message}
-            isInvalid={!!errors.shots?.[index]?.title}
-          />
-          <Textarea
-            label='Storyline'
-            placeholder='Enter storyline'
-            minRows={2}
-            {...register(`shots.${index}.storyline`)}
-            errorMessage={errors.shots?.[index]?.storyline?.message}
-            isInvalid={!!errors.shots?.[index]?.storyline}
-          />
-          <div className='grid grid-cols-2 gap-3'>
-            <Textarea
-              label='Text to Image Prompt'
-              placeholder='Enter prompt'
-              minRows={3}
-              {...register(`shots.${index}.textToImage.promptParams.prompt`)}
-              errorMessage={errors.shots?.[index]?.textToImage?.promptParams?.prompt?.message}
-              isInvalid={!!errors.shots?.[index]?.textToImage?.promptParams?.prompt}
-            />
-            <Textarea
-              label='Image to Video Prompt'
-              placeholder='Enter prompt'
-              minRows={3}
-              {...register(`shots.${index}.imageToVideo.promptParams.prompt`)}
-              errorMessage={errors.shots?.[index]?.imageToVideo?.promptParams?.prompt?.message}
-              isInvalid={!!errors.shots?.[index]?.imageToVideo?.promptParams?.prompt}
-            />
-          </div>
+          <DynamicForm fields={getShotFields(index)} register={register} errors={errors} />
         </div>
       ))}
       {errors.shots && <p className='text-xs text-danger'>{errors.shots.message}</p>}
