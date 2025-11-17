@@ -3,6 +3,7 @@
 import React from 'react';
 
 import { Button } from '@heroui/button';
+import { Dropdown, DropdownItem, DropdownMenu, DropdownTrigger } from '@heroui/dropdown';
 import { Input } from '@heroui/input';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useFieldArray, useForm } from 'react-hook-form';
@@ -83,6 +84,8 @@ export default function HomePage() {
     register,
     handleSubmit,
     control,
+    watch,
+    setValue,
     formState: { errors },
   } = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -108,18 +111,18 @@ export default function HomePage() {
       configurableOptions: {
         aspectRatio: {
           enabled: true,
-          options: [],
-          default: '',
+          options: ['9:16', '16:9', '1:1', '21:9', '2:3'],
+          default: '16:9',
         },
         style: {
           enabled: true,
-          options: [],
-          default: '',
+          options: ['THREE_D_ANIMATION'],
+          default: 'THREE_D_ANIMATION',
         },
         quality: {
           enabled: true,
-          options: [],
-          default: '',
+          options: ['standard', 'high'],
+          default: 'high',
         },
       },
     },
@@ -143,35 +146,9 @@ export default function HomePage() {
     name: 'shots',
   });
 
-  const {
-    fields: aspectRatioOptionFields,
-    append: appendAspectRatioOption,
-    remove: removeAspectRatioOption,
-  } = useFieldArray({
-    control,
-    // @ts-expect-error - react-hook-form has type limitations with deeply nested arrays
-    name: 'configurableOptions.aspectRatio.options',
-  });
-
-  const {
-    fields: styleOptionFields,
-    append: appendStyleOption,
-    remove: removeStyleOption,
-  } = useFieldArray({
-    control,
-    // @ts-expect-error - react-hook-form has type limitations with deeply nested arrays
-    name: 'configurableOptions.style.options',
-  });
-
-  const {
-    fields: qualityOptionFields,
-    append: appendQualityOption,
-    remove: removeQualityOption,
-  } = useFieldArray({
-    control,
-    // @ts-expect-error - react-hook-form has type limitations with deeply nested arrays
-    name: 'configurableOptions.quality.options',
-  });
+  const aspectRatioOptions = ['9:16', '16:9', '1:1', '21:9', '2:3'];
+  const styleOptions = ['THREE_D_ANIMATION'];
+  const qualityOptions = ['standard', 'high'];
 
   const onSubmit = (data: FormData) => {
     console.log('Form Data:', JSON.stringify(data, null, 2));
@@ -503,140 +480,101 @@ export default function HomePage() {
 
           {/* Aspect Ratio */}
           <div className='flex flex-col gap-3 rounded-lg border p-4'>
-            <div className='flex items-center justify-between'>
-              <h3 className='font-medium'>Aspect Ratio</h3>
-              <Button
-                type='button'
-                size='sm'
-                color='primary'
-                onPress={() => appendAspectRatioOption('' as never)}
-              >
-                Add Option
-              </Button>
-            </div>
-            <label className='flex items-center gap-2'>
-              <input
-                type='checkbox'
-                {...register('configurableOptions.aspectRatio.enabled')}
-                className='rounded border-default-300'
-              />
-              <span className='text-sm'>Enabled</span>
-            </label>
-            {aspectRatioOptionFields.map((field, index) => (
-              <div key={field.id} className='flex gap-2'>
-                <Input
-                  placeholder='Enter option (e.g., 16:9)'
-                  {...register(`configurableOptions.aspectRatio.options.${index}`)}
-                  className='flex-1'
-                />
-                <Button
-                  type='button'
-                  size='sm'
-                  color='danger'
-                  variant='light'
-                  onPress={() => removeAspectRatioOption(index)}
-                >
-                  Delete
+            <h3 className='font-medium'>Aspect Ratio</h3>
+            <Dropdown>
+              <DropdownTrigger>
+                <Button variant='bordered' className='w-full justify-between'>
+                  {watch('configurableOptions.aspectRatio.default') || 'Select aspect ratio'}
                 </Button>
-              </div>
-            ))}
-            <Input
-              label='Default'
-              placeholder='Enter default value'
-              {...register('configurableOptions.aspectRatio.default')}
-            />
+              </DropdownTrigger>
+              <DropdownMenu
+                aria-label='Aspect Ratio Options'
+                selectedKeys={
+                  watch('configurableOptions.aspectRatio.default')
+                    ? new Set([watch('configurableOptions.aspectRatio.default')])
+                    : new Set()
+                }
+                selectionMode='single'
+                onSelectionChange={(keys) => {
+                  const selected = Array.from(keys)[0] as string;
+                  if (selected) {
+                    setValue('configurableOptions.aspectRatio.default', selected, {
+                      shouldValidate: true,
+                    });
+                  }
+                }}
+              >
+                {aspectRatioOptions.map((option) => (
+                  <DropdownItem key={option}>{option}</DropdownItem>
+                ))}
+              </DropdownMenu>
+            </Dropdown>
           </div>
 
           {/* Style */}
           <div className='flex flex-col gap-3 rounded-lg border p-4'>
-            <div className='flex items-center justify-between'>
-              <h3 className='font-medium'>Style</h3>
-              <Button
-                type='button'
-                size='sm'
-                color='primary'
-                onPress={() => appendStyleOption('' as never)}
-              >
-                Add Option
-              </Button>
-            </div>
-            <label className='flex items-center gap-2'>
-              <input
-                type='checkbox'
-                {...register('configurableOptions.style.enabled')}
-                className='rounded border-default-300'
-              />
-              <span className='text-sm'>Enabled</span>
-            </label>
-            {styleOptionFields.map((field, index) => (
-              <div key={field.id} className='flex gap-2'>
-                <Input
-                  placeholder='Enter option'
-                  {...register(`configurableOptions.style.options.${index}`)}
-                  className='flex-1'
-                />
-                <Button
-                  type='button'
-                  size='sm'
-                  color='danger'
-                  variant='light'
-                  onPress={() => removeStyleOption(index)}
-                >
-                  Delete
+            <h3 className='font-medium'>Style</h3>
+            <Dropdown>
+              <DropdownTrigger>
+                <Button variant='bordered' className='w-full justify-between'>
+                  {watch('configurableOptions.style.default') || 'Select style'}
                 </Button>
-              </div>
-            ))}
-            <Input
-              label='Default'
-              placeholder='Enter default value'
-              {...register('configurableOptions.style.default')}
-            />
+              </DropdownTrigger>
+              <DropdownMenu
+                aria-label='Style Options'
+                selectedKeys={
+                  watch('configurableOptions.style.default')
+                    ? new Set([watch('configurableOptions.style.default')])
+                    : new Set()
+                }
+                selectionMode='single'
+                onSelectionChange={(keys) => {
+                  const selected = Array.from(keys)[0] as string;
+                  if (selected) {
+                    setValue('configurableOptions.style.default', selected, {
+                      shouldValidate: true,
+                    });
+                  }
+                }}
+              >
+                {styleOptions.map((option) => (
+                  <DropdownItem key={option}>{option}</DropdownItem>
+                ))}
+              </DropdownMenu>
+            </Dropdown>
           </div>
 
           {/* Quality */}
           <div className='flex flex-col gap-3 rounded-lg border p-4'>
-            <div className='flex items-center justify-between'>
-              <h3 className='font-medium'>Quality</h3>
-              <Button
-                type='button'
-                size='sm'
-                color='primary'
-                onPress={() => appendQualityOption('' as never)}
-              >
-                Add Option
-              </Button>
-            </div>
-            <label className='flex items-center gap-2'>
-              <input
-                type='checkbox'
-                {...register('configurableOptions.quality.enabled')}
-                className='rounded border-default-300'
-              />
-              <span className='text-sm'>Enabled</span>
-            </label>
-            {qualityOptionFields.map((field, index) => (
-              <div key={field.id} className='flex gap-2'>
-                <Input
-                  placeholder='Enter option'
-                  {...register(`configurableOptions.quality.options.${index}`)}
-                  className='flex-1'
-                />
-                <Button
-                  type='button'
-                  size='sm'
-                  color='danger'
-                  variant='light'
-                  onPress={() => removeQualityOption(index)}
-                >
-                  Delete
+            <h3 className='font-medium'>Quality</h3>
+            <Dropdown>
+              <DropdownTrigger>
+                <Button variant='bordered' className='w-full justify-between'>
+                  {watch('configurableOptions.quality.default') || 'Select quality'}
                 </Button>
-              </div>
-            ))}
-            <Input
-              label='Default'
-              placeholder='Enter default value'
-              {...register('configurableOptions.quality.default')}
-            />
+              </DropdownTrigger>
+              <DropdownMenu
+                aria-label='Quality Options'
+                selectedKeys={
+                  watch('configurableOptions.quality.default')
+                    ? new Set([watch('configurableOptions.quality.default')])
+                    : new Set()
+                }
+                selectionMode='single'
+                onSelectionChange={(keys) => {
+                  const selected = Array.from(keys)[0] as string;
+                  if (selected) {
+                    setValue('configurableOptions.quality.default', selected, {
+                      shouldValidate: true,
+                    });
+                  }
+                }}
+              >
+                {qualityOptions.map((option) => (
+                  <DropdownItem key={option}>{option}</DropdownItem>
+                ))}
+              </DropdownMenu>
+            </Dropdown>
           </div>
         </div>
 
