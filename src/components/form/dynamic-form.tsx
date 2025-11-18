@@ -12,6 +12,7 @@ import {
   Path,
 } from 'react-hook-form';
 
+import { MentionTextarea } from '@/components/form/mention-textarea';
 import type { FormData } from '@/lib/schemas';
 
 type FieldWidth = 'full' | 'half';
@@ -47,26 +48,37 @@ interface CheckboxFieldConfig extends BaseFieldConfig {
   control: Control<FormData>;
 }
 
+interface MentionTextareaFieldConfig extends BaseFieldConfig {
+  type: 'mention-textarea';
+  minRows?: number;
+  control: Control<FormData>;
+  roles: Array<{ id: string; label: string }>;
+}
+
 export type FieldConfig =
   | InputFieldConfig
   | TextareaFieldConfig
   | DropdownFieldConfig
-  | CheckboxFieldConfig;
+  | CheckboxFieldConfig
+  | MentionTextareaFieldConfig;
 
 interface DynamicFormProps {
   fields: FieldConfig[];
   register: UseFormRegister<FormData>;
   errors: FieldErrors<FormData>;
+  control?: Control<FormData>;
 }
 
 function FormField({
   field,
   register,
   errors,
+  control,
 }: {
   field: FieldConfig;
   register: UseFormRegister<FormData>;
   errors: FieldErrors<FormData>;
+  control?: Control<FormData>;
 }) {
   const errorMessage = getNestedError(errors, field.name);
   const isInvalid = !!errorMessage;
@@ -151,6 +163,26 @@ function FormField({
       );
     }
 
+    case 'mention-textarea': {
+      const mentionField = field as MentionTextareaFieldConfig;
+      if (!control) {
+        console.warn('Control is required for mention-textarea field');
+        return null;
+      }
+      return (
+        <MentionTextarea
+          name={field.name}
+          label={field.label}
+          placeholder={field.placeholder}
+          minRows={mentionField.minRows || 3}
+          control={control}
+          errors={errors}
+          roles={mentionField.roles}
+          className={widthClass}
+        />
+      );
+    }
+
     default:
       return null;
   }
@@ -196,7 +228,7 @@ function getNestedError(errors: FieldErrors<FormData>, path: string): string | u
   return current?.message;
 }
 
-export function DynamicForm({ fields, register, errors }: DynamicFormProps) {
+export function DynamicForm({ fields, register, errors, control }: DynamicFormProps) {
   const rows: FieldConfig[][] = [];
   let currentRow: FieldConfig[] = [];
 
@@ -228,7 +260,13 @@ export function DynamicForm({ fields, register, errors }: DynamicFormProps) {
           className={row.length === 2 ? 'grid grid-cols-2 gap-4' : 'flex flex-col gap-4'}
         >
           {row.map((field, fieldIndex) => (
-            <FormField key={`${field.name}-${fieldIndex}`} field={field} register={register} errors={errors} />
+            <FormField
+              key={`${field.name}-${fieldIndex}`}
+              field={field}
+              register={register}
+              errors={errors}
+              control={control}
+            />
           ))}
         </div>
       ))}

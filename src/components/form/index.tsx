@@ -53,9 +53,11 @@ export function TemplateForm() {
         errors={errors}
         watch={watch}
         setValue={setValue}
+        control={control}
         shotFields={shotFields}
         appendShot={appendShot}
         removeShot={removeShot}
+        roles={watch('roles').map((role) => ({ id: role.id, label: role.label }))}
     />
 
     <ConfigurableOptionsSection watch={watch} setValue={setValue} register={register} errors={errors} />

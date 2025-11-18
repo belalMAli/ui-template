@@ -1,5 +1,13 @@
 import { Button } from '@heroui/button';
-import { UseFormRegister, FieldErrors, UseFieldArrayReturn, UseFormWatch, UseFormSetValue, Path } from 'react-hook-form';
+import {
+  UseFormRegister,
+  FieldErrors,
+  UseFieldArrayReturn,
+  UseFormWatch,
+  UseFormSetValue,
+  Control,
+  Path,
+} from 'react-hook-form';
 
 import { DynamicForm, type FieldConfig } from '@/components/form/dynamic-form';
 import { SHOT_TYPES } from '@/lib/constants/form';
@@ -10,9 +18,11 @@ interface ShotsSectionProps {
   errors: FieldErrors<FormData>;
   watch: UseFormWatch<FormData>;
   setValue: UseFormSetValue<FormData>;
+  control: Control<FormData>;
   shotFields: UseFieldArrayReturn<FormData, 'shots'>['fields'];
   appendShot: UseFieldArrayReturn<FormData, 'shots'>['append'];
   removeShot: UseFieldArrayReturn<FormData, 'shots'>['remove'];
+  roles: Array<{ id: string; label: string }>;
 }
 
 export function ShotsSection({
@@ -20,9 +30,11 @@ export function ShotsSection({
   errors,
   watch,
   setValue,
+  control,
   shotFields,
   appendShot,
   removeShot,
+  roles,
 }: ShotsSectionProps) {
   const getShotFields = (index: number): FieldConfig[] => [
     {
@@ -63,12 +75,14 @@ export function ShotsSection({
       width: 'full',
     },
     {
-      type: 'textarea',
+      type: 'mention-textarea',
       name: `shots.${index}.storyline` as Path<FormData>,
       label: 'Storyline',
-      placeholder: 'Enter storyline',
+      placeholder: 'Enter storyline (type @ to mention a role)',
       minRows: 2,
       width: 'full',
+      control,
+      roles,
     },
     {
       type: 'textarea',
@@ -133,7 +147,12 @@ export function ShotsSection({
               Delete
             </Button>
           </div>
-          <DynamicForm fields={getShotFields(index)} register={register} errors={errors} />
+          <DynamicForm
+            fields={getShotFields(index)}
+            register={register}
+            errors={errors}
+            control={control}
+          />
         </div>
       ))}
       {errors.shots && <p className='text-xs text-danger'>{errors.shots.message}</p>}
