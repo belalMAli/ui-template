@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { Textarea } from '@heroui/input';
+import React, { useMemo } from 'react';
+import { MentionsInput, Mention } from 'react-mentions';
 import { useController, Control, Path, FieldErrors } from 'react-hook-form';
 import type { FormData } from '@/lib/schemas';
 
@@ -36,13 +36,6 @@ export function MentionTextarea({
   // Ensure value is always a string
   const stringValue = typeof value === 'string' ? value : '';
 
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const mentionPopupRef = useRef<HTMLDivElement>(null);
-  const [showMentions, setShowMentions] = useState(false);
-  const [mentionQuery, setMentionQuery] = useState('');
-  const [selectedIndex, setSelectedIndex] = useState(0);
-  const [cursorPosition, setCursorPosition] = useState(0);
-
   // Get nested error message
   const getNestedError = (errs: FieldErrors<FormData> | undefined, path: string): string | undefined => {
     if (!errs) return undefined;
@@ -61,224 +54,121 @@ export function MentionTextarea({
   const errorMessage = getNestedError(errors, name);
   const isInvalid = !!errorMessage;
 
-  // Filter roles based on query
-  const filteredRoles = roles
-    .filter((role) => role.label && role.label.trim() !== '')
-    .filter((role) => role.label.toLowerCase().includes(mentionQuery.toLowerCase()));
-
-  // Handle text change and detect @ mentions
-  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const newValue = e.target.value;
-    const cursorPos = e.target.selectionStart;
-
-    onChange(newValue);
-    setCursorPosition(cursorPos);
-
-    // Check if we're typing after an @
-    const textBeforeCursor = newValue.substring(0, cursorPos);
-    const lastAtIndex = textBeforeCursor.lastIndexOf('@');
-
-    if (lastAtIndex !== -1) {
-      // Check if there's a space or newline after @ (meaning mention is complete)
-      const textAfterAt = textBeforeCursor.substring(lastAtIndex + 1);
-      const hasSpaceOrNewline = /[\s\n]/.test(textAfterAt);
-
-      if (!hasSpaceOrNewline) {
-        // We're in a mention
-        const query = textAfterAt;
-        setMentionQuery(query);
-        setShowMentions(true);
-        setSelectedIndex(0);
-      } else {
-        setShowMentions(false);
-      }
-    } else {
-      setShowMentions(false);
-    }
-  };
-
-  // Insert mention into text
-  const insertMention = useCallback(
-    (roleLabel: string) => {
-      const textBeforeCursor = stringValue.substring(0, cursorPosition);
-      const textAfterCursor = stringValue.substring(cursorPosition);
-      const lastAtIndex = textBeforeCursor.lastIndexOf('@');
-
-      if (lastAtIndex !== -1) {
-        const textBeforeAt = textBeforeCursor.substring(0, lastAtIndex);
-        const newValue = `${textBeforeAt}@${roleLabel} ${textAfterCursor}`;
-        onChange(newValue);
-        setShowMentions(false);
-        setMentionQuery('');
-
-        // Set cursor position after the mention
-        setTimeout(() => {
-          if (textareaRef.current) {
-            const newCursorPos = lastAtIndex + roleLabel.length + 2; // +2 for @ and space
-            textareaRef.current.setSelectionRange(newCursorPos, newCursorPos);
-            textareaRef.current.focus();
-          }
-        }, 0);
-      }
-    },
-    [stringValue, cursorPosition, onChange]
+  // Transform roles to react-mentions format (expects { id, display })
+  const mentionData = useMemo(
+    () =>
+      roles
+        .filter((role) => role.label && role.label.trim() !== '')
+        .map((role) => ({
+          id: role.id,
+          display: role.label,
+        })),
+    [roles]
   );
 
-  // Handle keyboard navigation in mentions popover
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (showMentions && filteredRoles.length > 0) {
-      if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        setSelectedIndex((prev) => (prev + 1) % filteredRoles.length);
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        setSelectedIndex((prev) => (prev - 1 + filteredRoles.length) % filteredRoles.length);
-      } else if (e.key === 'Enter' || e.key === 'Tab') {
-        e.preventDefault();
-        const selectedRole = filteredRoles[selectedIndex];
-        if (selectedRole) {
-          insertMention(selectedRole.label);
-        }
-      } else if (e.key === 'Escape') {
-        setShowMentions(false);
-      }
-    }
+  // Handle change event from MentionsInput
+  const handleChange = (event: any, newValue: string, newPlainTextValue: string, mentions: any[]) => {
+    onChange(newPlainTextValue);
   };
 
-  // Render text with mentions highlighted
-  const renderTextWithMentions = (text: string) => {
-    const parts: Array<{ text: string; isMention: boolean }> = [];
-    const mentionRegex = /@(\w+)/g;
-    let lastIndex = 0;
-    let match;
+  // Calculate min height based on minRows (approximately 24px per line)
+  const minHeight = minRows * 24;
 
-    while ((match = mentionRegex.exec(text)) !== null) {
-      // Add text before mention
-      if (match.index > lastIndex) {
-        parts.push({ text: text.substring(lastIndex, match.index), isMention: false });
-      }
-
-      // Check if this is a valid role mention
-      const roleLabel = match[1];
-      const isValidMention = roles.some((role) => role.label === roleLabel);
-
-      if (isValidMention) {
-        parts.push({ text: `@${roleLabel}`, isMention: true });
-      } else {
-        parts.push({ text: match[0], isMention: false });
-      }
-
-      lastIndex = mentionRegex.lastIndex;
-    }
-
-    // Add remaining text
-    if (lastIndex < text.length) {
-      parts.push({ text: text.substring(lastIndex), isMention: false });
-    }
-
-    return parts.length > 0 ? parts : [{ text, isMention: false }];
-  };
-
-  // Calculate popup position
-  const updatePopupPosition = useCallback(() => {
-    if (!textareaRef.current || !mentionPopupRef.current || !showMentions) return;
-
-    const textarea = textareaRef.current;
-    const popup = mentionPopupRef.current;
-    const rect = textarea.getBoundingClientRect();
-    const scrollTop = textarea.scrollTop;
-
-    // Get cursor position
-    const textBeforeCursor = stringValue.substring(0, cursorPosition);
-    const lastAtIndex = textBeforeCursor.lastIndexOf('@');
-    
-    if (lastAtIndex === -1) return;
-
-    const textBeforeAt = textBeforeCursor.substring(0, lastAtIndex);
-    const lines = textBeforeAt.split('\n');
-    const lineNumber = lines.length - 1;
-    const lineText = lines[lineNumber] || '';
-
-    // Measure text width
-    const canvas = document.createElement('canvas');
-    const context = canvas.getContext('2d');
-    if (context) {
-      const font = window.getComputedStyle(textarea).font;
-      context.font = font;
-      const textWidth = context.measureText(lineText).width;
-      
-      const lineHeight = parseInt(window.getComputedStyle(textarea).lineHeight) || 20;
-      const paddingTop = 40; // Approximate label height
-      
-      popup.style.top = `${paddingTop + (lineNumber * lineHeight) + lineHeight + 5}px`;
-      popup.style.left = `${textWidth + 20}px`;
-    }
-  }, [stringValue, cursorPosition, showMentions]);
-
-  // Update position when mentions show
-  useEffect(() => {
-    if (showMentions) {
-      updatePopupPosition();
-      const interval = setInterval(updatePopupPosition, 100);
-      return () => clearInterval(interval);
-    }
-  }, [showMentions, updatePopupPosition]);
+  // Get theme colors for better integration
+  const borderColor = isInvalid 
+    ? 'hsl(var(--heroui-danger))' 
+    : 'hsl(var(--heroui-default-300))';
 
   return (
-    <div className={`relative ${className || ''}`}>
-      <Textarea
-        ref={textareaRef}
-        label={label}
-        placeholder={placeholder}
-        minRows={minRows}
-        value={stringValue}
-        onChange={handleChange as any}
-        onKeyDown={handleKeyDown as any}
-        onBlur={() => {
-          // Delay hiding to allow click on mention option
-          setTimeout(() => setShowMentions(false), 200);
-        }}
-        errorMessage={errorMessage}
-        isInvalid={isInvalid}
-        className="w-full"
-      />
-      
-      {showMentions && filteredRoles.length > 0 && (
-        <div
-          ref={mentionPopupRef}
-          className="absolute z-50 bg-content1 border border-default-200 rounded-lg shadow-lg max-h-48 overflow-y-auto min-w-[200px]"
-        >
-          {filteredRoles.map((role, index) => (
-            <div
-              key={role.id}
-              className={`px-3 py-2 cursor-pointer hover:bg-default-100 transition-colors ${
-                index === selectedIndex ? 'bg-default-100' : ''
-              }`}
-              onClick={() => insertMention(role.label)}
-              onMouseEnter={() => setSelectedIndex(index)}
-            >
-              <span className="text-sm font-medium text-primary">@</span>
-              <span className="text-sm ml-1">{role.label}</span>
-            </div>
-          ))}
-        </div>
+    <div className={`flex flex-col gap-1.5 ${className || ''}`}>
+      {label && (
+        <label className="text-sm font-medium text-foreground-700">
+          {label}
+        </label>
       )}
-
-      {/* Display preview with mentions highlighted in blue */}
-      {stringValue && (
-        <div className="mt-2 p-2 bg-default-50 rounded border border-default-200 text-sm">
-          <div className="whitespace-pre-wrap text-foreground">
-            {renderTextWithMentions(stringValue).map((part, index) =>
-              part.isMention ? (
-                <span key={index} className="text-primary font-medium">
-                  {part.text}
-                </span>
-              ) : (
-                <span key={index}>{part.text}</span>
-              )
-            )}
-          </div>
-        </div>
+      <div className="relative">
+        <MentionsInput
+          value={stringValue}
+          onChange={handleChange}
+          placeholder={placeholder}
+          style={{
+            control: {
+              backgroundColor: 'transparent',
+              fontSize: '14px',
+              fontWeight: 'normal',
+              fontFamily: 'inherit',
+            },
+            '&multiLine': {
+              control: {
+                fontFamily: 'inherit',
+                minHeight: `${minHeight}px`,
+                lineHeight: '1.5',
+              },
+              highlighter: {
+                padding: '12px',
+                minHeight: `${minHeight}px`,
+                border: `1px solid ${borderColor}`,
+                borderRadius: '8px',
+                fontFamily: 'inherit',
+                fontSize: '14px',
+                lineHeight: '1.5',
+                overflow: 'hidden',
+                boxSizing: 'border-box',
+              },
+              input: {
+                padding: '12px',
+                minHeight: `${minHeight}px`,
+                border: `1px solid ${borderColor}`,
+                borderRadius: '8px',
+                fontFamily: 'inherit',
+                fontSize: '14px',
+                lineHeight: '1.5',
+                resize: 'vertical',
+                boxSizing: 'border-box',
+                outline: 'none',
+                transition: 'border-color 0.2s',
+              },
+            },
+            suggestions: {
+              list: {
+                backgroundColor: 'hsl(var(--heroui-content1))',
+                border: '1px solid hsl(var(--heroui-default-200))',
+                borderRadius: '8px',
+                fontSize: '14px',
+                maxHeight: '192px',
+                overflowY: 'auto',
+                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+                zIndex: 50,
+              },
+              item: {
+                padding: '8px 12px',
+                transition: 'background-color 0.15s',
+                cursor: 'pointer',
+                '&focused': {
+                  backgroundColor: 'hsl(var(--heroui-default-100))',
+                },
+              },
+            },
+          }}
+        >
+          <Mention
+            trigger="@"
+            data={mentionData}
+            displayTransform={(id, display) => `@${display}`}
+            markup="@[__display__](__id__)"
+            style={{
+              color: '#2563eb',
+              backgroundColor: 'rgba(37, 99, 235, 0.1)',
+              fontWeight: '500',
+              padding: '2px 4px',
+              borderRadius: '4px',
+              zIndex: 1,
+            }}
+          />
+        </MentionsInput>
+      </div>
+      {errorMessage && (
+        <p className="text-xs text-danger mt-1">{errorMessage}</p>
       )}
     </div>
   );
